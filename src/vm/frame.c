@@ -72,12 +72,10 @@ frame_evict(struct frame_entry* frame_entry) {
 }
 
 
-//upage(virtual address) 위치를 줬을때 그게 pa어디ㅔ ㅣㅆ는지 리턴해줘!
+//
 void
 frame_find_to_evict(){
 	struct frame_entry* f = list_entry(clock_hand, struct frame_entry, elem);
-		
-	//evict 할거 찾기
 	while (pagedir_is_accessed(f->t->pd, f->page_addr) == true;){
 		f = list_entry(clock_hand, struct frame_entry, elem);
 
