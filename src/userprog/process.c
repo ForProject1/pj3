@@ -20,6 +20,8 @@
 #include "threads/vaddr.h"
 #include "threads/malloc.h"
 #include "userprog/syscall.h"
+#include "vm/page.h"
+
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -69,6 +71,7 @@ start_process (void *file_name_)
   void **esp = &if_.esp;
   
   /* Initialize interrupt frame and load executable. */
+  
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
@@ -297,22 +300,21 @@ load (const char *file_name, void (**eip) (void), void **esp)
   int i;
   
   /* Allocate and activate page directory. */
-  t->pagedir = pagedir_create ();
-  if (t->pagedir == NULL) 
-    goto done;
-  process_activate ();
-  
-  /* Open executable file. */
-  file = filesys_open (file_name);
-  if (file == NULL) 
-    {
-      printf ("load: %s: open failed\n", file_name);
-      goto done; 
-    }
-  else {
-    file_deny_write(file);
-  }
+  t->pagedir = pagedir_create();
+  if (t->pagedir == NULL)
+	  goto done;
+  process_activate();
 
+  /* Open executable file. */
+  file = filesys_open(file_name);
+  if (file == NULL)
+  {
+	  printf("load: %s: open failed\n", file_name);
+	  goto done;
+  }
+  else {
+	  file_deny_write(file);
+  }
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -338,6 +340,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
       if (file_read (file, &phdr, sizeof phdr) != sizeof phdr)
         goto done;
+
       file_ofs += sizeof phdr;
       switch (phdr.p_type) 
         {
@@ -375,7 +378,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
                   read_bytes = 0;
                   zero_bytes = ROUND_UP (page_offset + phdr.p_memsz, PGSIZE);
                 }
-              if (!load_segment (file, file_page, (void *) mem_page,
+              if (!spt_insert (&t->spt, file, file_page, (void *) mem_page,
                                  read_bytes, zero_bytes, writable))
                 goto done;
             }
@@ -465,7 +468,7 @@ validate_segment (const struct Elf32_Phdr *phdr, struct file *file)
    or disk read error occurs. */
 static bool
 load_segment (struct file *file, off_t ofs, uint8_t *upage,
-              uint32_t read_bytes, uint32_t zero_bytes, bool writable) 
+              uint32_t read_bytes, uint32_t zero_bytes, bool writable, bool flag) 
 {
   ASSERT ((read_bytes + zero_bytes) % PGSIZE == 0);
   ASSERT (pg_ofs (upage) == 0);
@@ -482,9 +485,13 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 
       /* Get a page of memory. */
       uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
-
+      
+	  /*Eviction is required*/
+	  if (kpage == NULL) {
+		  frame_lock_acquire();
+		  kpage = frame_find_to_evict();
+		  frame_lock_release();
+	  }
       /* Load this page. */
       if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
         {
@@ -499,6 +506,8 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
           palloc_free_page (kpage);
           return false; 
         }
+
+	  //Allocate frame + Add to frame table
 
       /* Advance. */
       read_bytes -= page_read_bytes;
@@ -541,6 +550,10 @@ static bool
 install_page (void *upage, void *kpage, bool writable)
 {
   struct thread *t = thread_current ();
+
+  frame_lock_acquire();
+  frame_allocate(kpage,upage);
+  frame_lock_release();
 
   /* Verify that there's not already a page at that virtual
      address, then map our page there. */

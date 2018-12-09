@@ -96,6 +96,7 @@ thread_init (void)
   list_init (&ready_list);
   list_init (&all_list);
 
+
   /* Set up a thread structure for the running thread. */
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
@@ -478,6 +479,8 @@ init_thread (struct thread *t, const char *name, int priority)
   list_init(&t->child_list);
   list_init(&t->signal_list);
   list_init(&t->fd_table);
+  spt_init(&t->spt);
+  lock_init(&t->spt_lock);
   t->current_file = NULL;
 #endif
 

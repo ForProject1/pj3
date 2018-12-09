@@ -93,6 +93,7 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
+	
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
@@ -105,6 +106,9 @@ struct thread
     struct list fd_table;
 
     struct file *current_file;
+
+	struct hash spt;
+	struct lock spt_lock;
 #endif
 
     /* Owned by thread.c. */
