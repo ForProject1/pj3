@@ -93,8 +93,6 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-	
-#ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 
@@ -104,12 +102,15 @@ struct thread
 
     struct list signal_list;
     struct list fd_table;
+	struct list mmap_table;
 
     struct file *current_file;
 
 	struct hash spt;
 	struct lock spt_lock;
-#endif
+
+	uint32_t stack_size;
+
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */

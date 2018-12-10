@@ -1,10 +1,17 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <round.h>
 #include "userprog/gdt.h"
 #include "userprog/signal.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "vm/frame.h"
+#include "vm/page.h"
+#include "threads/vaddr.h"
+#include "threads/process.h"
+
+
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -131,7 +138,11 @@ page_fault(struct intr_frame *f)
 	bool write;        /* True: access was write, false: access was read. */
 	bool user;         /* True: access by user, false: access by kernel. */
 	void *fault_addr;  /* Fault address. */
-
+	struct thread* t;
+	void* stack_bound;
+	int stack_growing_size;
+	int count;
+	void* kpage;
 
 	/* Obtain faulting address, the virtual address that was
 	   accessed to cause the fault.  It may point to code or to
@@ -142,6 +153,7 @@ page_fault(struct intr_frame *f)
 	   (#PF)". */
 	asm("movl %%cr2, %0" : "=r" (fault_addr));
 
+	t = thread_current();
 
 	/* Turn interrupts back on (they were only off so that we could
 	   be assured of reading CR2 before it changed). */
@@ -150,12 +162,42 @@ page_fault(struct intr_frame *f)
 	//search in spt table
 	// and if there is a lazy loaded page, now we load the page and we have to be back from there.
 
-	/* Count page faults. */
-	page_fault_cnt++;
 
+	//lazy loading 1. executables in spt table, 2. mmap files in mmap_table
 	if (spt_load(&thread_current()->spt, fault_addr & ~PGMASK)) {
 		return;
 	}
+	//stack growth
+	stack_bound = PHYS_BASE - (t->stack_size * PGSIZE);
+
+	if (fault_addr < stack_bound
+		&& fault_addr >= PHYS_BASE - (2048 * PGSIZE) 
+		&& fault_addr < f->esp ){
+
+		stack_growth_size = ROUND_UP(stack_bound - fault_addr, PGSIZE) / PGSIZE;
+
+		upage = stack_bound;
+		for (count = 0; count < stack_growth_size; count++) {
+			upage -= PGSIZE;
+			kpage = palloc_get_page(PAL_USER);
+			frame_lock_acquire();
+			frame_allocate(kpage, upage);
+			frame_lock_release(); 
+
+			pagedir_get_page(t->pagedir, upage);
+			pagedir_set_page(t->pagedir, upage, kpage, false));
+
+			t->stack_size++;
+		}
+
+
+		f->esp = fault_addr;
+		return;
+	}
+
+	/* Count page faults. */
+	page_fault_cnt++;
+	
 
   /* Determine cause. */
   not_present = (f->error_code & PF_P) == 0;

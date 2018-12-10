@@ -1,16 +1,8 @@
 #ifndef VM_PAGE_H
 #define VM_PAGE_H
 
-/* Page fault error code bits that describe the cause of the exception.  */
-#define PF_P 0x1    /* 0: not-present page. 1: access rights violation. */
-#define PF_W 0x2    /* 0: read, 1: write. */
-#define PF_U 0x4    /* 0: kernel, 1: user process. */
-
-void exception_init (void);
-void exception_print_stats (void);
-
-#endif /* userprog/exception.h */
-
+#include <hash.h>
+#include "filesys/file.h"
 
 struct spt_entry {
 	struct file* file;
@@ -22,5 +14,11 @@ struct spt_entry {
 	struct hash_elem elem;
 };
 
+void spt_init(hash * spt);
+bool spt_insert(hash * spt, file * file, off_t ofs, uint8_t * upage, uint32_t read_bytes, uint32_t zero_bytes, bool writable);
+struct spt_entry * spt_get_page(hash * spt, void * upage);
+bool spt_load(hash * spt, void * upage);
+void spt_delete(hash * spt, void * upage);
+void spt_destroy(hash * spt);
 
-
+#endif /* userprog/exception.h */

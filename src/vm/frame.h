@@ -1,12 +1,26 @@
 #ifndef VM_FRAME_H
 #define VM_FRAME_H
 
-/* Page fault error code bits that describe the cause of the exception.  */
-#define PF_P 0x1    /* 0: not-present page. 1: access rights violation. */
-#define PF_W 0x2    /* 0: read, 1: write. */
-#define PF_U 0x4    /* 0: kernel, 1: user process. */
+#include "threads/thread.h"
+#include <list.h>
 
-void exception_init (void);
-void exception_print_stats (void);
+
+struct frame_entry {
+	struct list_elem elem;
+	void* page_addr;
+	void* physical_addr;
+	struct thread* t;
+};
+
+void frame_table_init();
+void frame_table_insert(void* kpage, void* upage);
+void frame_table_delete(frame_entry * f);
+void * frame_allocate(void * kapge, void * upage);
+void frame_evict(frame_entry * frame_entry);
+void frame_find_to_evict();
+struct frame_entry * frame_table_search(void * upage);
+void frame_lock_acquire();
+void frame_lock_release();
+
 
 #endif /* userprog/exception.h */

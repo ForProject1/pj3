@@ -9,6 +9,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "frame.h"
 
 static struct list frame_table;
 
@@ -16,12 +17,7 @@ static struct lock frame_table_lock;
 
 static struct list_elem* clock_hand;
 
-struct frame_entry {
-	struct list_elem elem;
-	void* page_addr;
-	void* physical_addr;
-	struct thread* t;
-};
+
 
 
 /*Frame_table size = 64MB*/
@@ -72,7 +68,7 @@ frame_evict(struct frame_entry* frame_entry) {
 }
 
 
-//upage(virtual address) 위치를 줬을때 그게 pa어디ㅔ ㅣㅆ는지 리턴해줘!
+//find to evict with clock algorithm
 void
 frame_find_to_evict(){
 	struct frame_entry* f = list_entry(clock_hand, struct frame_entry, elem);

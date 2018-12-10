@@ -7,6 +7,7 @@
 #include "userprog/syscall.h"
 #include "threads/synch.h"
 #include <hash.h>
+#include "page.h"
 
 
 static unsigned
@@ -28,7 +29,7 @@ bool
 spt_insert(struct hash* spt, struct file *file, off_t ofs, uint8_t *upage,
 	uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
 	struct spt_entry e = malloc(sizeof(struct spt_entry));
-	e->file = file
+	e->file = file;
 	e->file_page = ofs;
 	e->upage = upage;
 	e->read_bytes = read_bytes;
@@ -79,6 +80,7 @@ spt_destroy(struct hash* spt) {
 }
 
 
+bool
 
 
 

@@ -11,10 +11,12 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
-#ifdef USERPROG
+
 #include "userprog/process.h"
 #include "userprog/signal.h"
-#endif
+
+#include "frame.h"
+#include "page.h"
 
 /* Random value for struct thread's `magic' member.
    Used to detect stack overflow.  See the big comment at the top
@@ -95,6 +97,7 @@ thread_init (void)
   lock_init (&tid_lock);
   list_init (&ready_list);
   list_init (&all_list);
+
 
 
   /* Set up a thread structure for the running thread. */
@@ -475,14 +478,14 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
 
-#ifdef USERPROG
   list_init(&t->child_list);
   list_init(&t->signal_list);
   list_init(&t->fd_table);
+  list_init(&t->mmap_table);
   spt_init(&t->spt);
   lock_init(&t->spt_lock);
   t->current_file = NULL;
-#endif
+  t->stack_size = 1;
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
